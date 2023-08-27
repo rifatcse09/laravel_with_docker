@@ -1,0 +1,122 @@
+#
+#--------------------------------------------------------------------------
+# Image Setup
+#--------------------------------------------------------------------------
+#
+FROM php:8.2-fpm-alpine
+
+LABEL authors="Rifat"
+
+# Set working directory
+WORKDIR /var/www/html/
+
+# Set Environment Variables
+ENV DEBIAN_FRONTEND noninteractive
+
+#
+#--------------------------------------------------------------------------
+# Software's Installation
+#--------------------------------------------------------------------------
+#
+# Installing tools and PHP extentions using "apt", "docker-php", "pecl",
+#
+
+# Install "curl", "libmemcached-dev", "libpq-dev", "libjpeg-dev",
+#         "libpng-dev", "libfreetype6-dev", "libssl-dev", "libmcrypt-dev",
+
+
+# Essentials
+RUN echo "UTC" > /etc/timezone
+RUN apk add --no-cache zip unzip curl sqlite nginx supervisor
+
+# Installing bash
+# RUN apk add bash
+# RUN sed -i 's/bin\/ash/bin\/bash/g' /etc/passwd
+
+# Installing PHP
+RUN apk add --no-cache php82 \
+    php82-common \
+    php82-fpm \
+    php82-pdo \
+    php82-opcache \
+    php82-zip \
+    php82-phar \
+    php82-iconv \
+    php82-cli \
+    php82-curl \
+    php82-openssl \
+    php82-mbstring \
+    php82-tokenizer \
+    php82-fileinfo \
+    php82-json \
+    php82-xml \
+    php82-xmlwriter \
+    php82-simplexml \
+    php82-dom \
+    php82-pdo_mysql \
+    php82-pdo_pgsql \
+    php82-pdo_sqlite \
+    php82-tokenizer \
+    php82-pecl-redis
+
+RUN ln -s /usr/bin/php82 /usr/bin/php
+
+# Install Node.js and npm
+RUN apk add --no-cache nodejs npm
+
+
+# Install composer (php package manager)
+#RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# Copy composer.lock and composer.json into the working directory
+#COPY composer.lock composer.json /var/www/html/
+
+
+# allow super user - set this if you use Composer as a
+# super user at all times like in docker containers
+ENV COMPOSER_ALLOW_SUPERUSER=1
+
+# obtain composer using multi-stage build
+# https://docs.docker.com/build/building/multi-stage/
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+#Here, we are copying only composer.json and composer.lock (instead of copying the entire source)
+# right before doing composer install.
+# This is enough to take advantage of docker cache and composer install will
+# be executed only when composer.json or composer.lock have indeed changed!-
+# https://medium.com/@softius/faster-docker-builds-with-composer-install-b4d2b15d0fff
+#COPY composer.* /var/www/html/
+
+# install
+#RUN composer install  --prefer-dist --no-dev --no-scripts --no-progress --no-interaction
+#for production
+#RUN composer install --prefer-dist --no-dev --no-scripts --no-progress --no-interaction
+
+# run composer dump-autoload --optimize
+#RUN composer dump-autoload --optimize
+
+# Copy package.json and package-lock.json into the image
+#COPY package*.json /var/www/html
+
+COPY . .
+
+# Set ownership and permissions for the storage directory
+# USER root
+# RUN chown -R www-data:www-data /var/www/html/storage
+# RUN chmod -R 775 /var/www/html/storage
+# USER www-data
+
+# Create system user to run Composer and Artisan Commands
+# RUN useradd -G www-data,root -u $uid -d /home/$user $user
+# RUN mkdir -p /home/$user/.composer && \
+#     chown -R $user:$user /home/$user
+
+# Set ownership and permissions for the laravel.log file
+#RUN chown www-data:www-data /var/www/html/storage/logs/laravel.log
+#RUN chmod 664 /var/www/html/storage/logs/laravel.log
+
+# Change ownership of the entire Laravel directory to the web server user (e.g., www-data)
+#RUN chown -R $(whoami):$(whoami) .
+
+# Set directory permissions for Laravel's storage and bootstrap/cache directories
+#RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
